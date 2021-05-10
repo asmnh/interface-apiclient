@@ -19,6 +19,10 @@ namespace InterfaceApiClient
         private readonly List<Type> _pendingInterfaceTypes;
         private readonly Dictionary<Type, MethodInfo> _typeMap;
         private readonly Dictionary<Type, ProxyMetadata> _typeMetadata;
+        private readonly List<string> _allGroups;
+
+        public IEnumerable<string> AllGroups => _allGroups.Distinct();
+
 
         internal ApiClientProxyBuilder(ApiClientConfiguration configuration)
         {
@@ -26,6 +30,7 @@ namespace InterfaceApiClient
             _pendingInterfaceTypes = new List<Type>();
             _typeMetadata = new Dictionary<Type, ProxyMetadata>();
             _typeMap = new Dictionary<Type, MethodInfo>();
+            _allGroups = new List<string>();
         }
 
         internal void AddInterface(Type interfaceType)
@@ -56,6 +61,7 @@ namespace InterfaceApiClient
                 MethodInfo constructor = createDispatch.MakeGenericMethod(type, typeof(ApiDispatchProxy));
                 _typeMap[type] = constructor;
                 _typeMetadata[type] = GetMetadata(type);
+                _allGroups.AddRange(_typeMetadata[type].Groups);
             }
         }
 

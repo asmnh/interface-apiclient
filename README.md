@@ -7,7 +7,7 @@ This is early alpha proof-of-concept attempt at making library that will ease tr
 
 ## TODO
 
-- Add HTTP error to exception conversion, following attributes.
+~~- Add HTTP error to exception conversion, following attributes.~~ *(still needs testing)*
 - Harden and test what is already there.
 - Proper error handling for unspecified situation (network errors, empty response etc).
 - Allow named HTTP Client configuration.

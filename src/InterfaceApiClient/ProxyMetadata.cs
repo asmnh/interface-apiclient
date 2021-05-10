@@ -23,6 +23,8 @@ namespace InterfaceApiClient
             }
         }
 
+        public IEnumerable<string> Groups => _methods.Select(m => m.Value.GroupName).Distinct();
+
         internal MethodMetadata Method(MethodInfo method)
         {
             return _methods[method];

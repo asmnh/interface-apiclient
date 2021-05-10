@@ -48,12 +48,19 @@ namespace InterfaceApiClient
             IsApiMethod = true;
             HttpMethod = endpoint.HttpMethodString;
 
-            var parameters = method.GetParameters();
-            BuildPath = MakePathBuilder(endpoint.Endpoint, parameters);
-            BuildQuery = MakeQueryBuilder(parameters);
-            BuildBody = MakeBodyBuilder(parameters);
-            BuildHeaders = MakeHeaderBuilder(parameters);
-            BuildResponseException = MakeResponseExceptionBuilder(method);
+            try
+            {
+                var parameters = method.GetParameters();
+                BuildPath = MakePathBuilder(endpoint.Endpoint, parameters);
+                BuildQuery = MakeQueryBuilder(parameters);
+                BuildBody = MakeBodyBuilder(parameters);
+                BuildHeaders = MakeHeaderBuilder(parameters);
+                BuildResponseException = MakeResponseExceptionBuilder(method);
+            }
+            catch(InvalidMetadataException ex)
+            {
+                throw new InvalidMetadataException(method.DeclaringType!, ex.Endpoint, ex.Message);
+            }
         }
 
         private static Func<HttpStatusCode, string?, Exception?> MakeResponseExceptionBuilder(MethodInfo method)
@@ -215,8 +222,9 @@ namespace InterfaceApiClient
                     fills[name] = objs => unpacker(objs[idx])?.ToString() ?? "";
                 }
             }
-            if (matchedArgs.Any(a => !fills.ContainsKey(a)))
-                throw new ArgumentException($"Endpoint {endpoint} has template values in URL that don't have matching parameters", nameof(parameters));
+            var missing = matchedArgs.Where(a => !fills.ContainsKey(a)).ToArray();
+            if (missing.Any())
+                throw new InvalidMetadataException(typeof(MethodMetadata), endpoint, $"Missing required path parameters: {string.Join(", ", missing)}");
             return args =>
                 Regex.Replace(endpoint, "\\{(?:[A-Za-z0-9]+)\\}", match => fills[Unwrap(match.Groups[0].Value)](args));
         }

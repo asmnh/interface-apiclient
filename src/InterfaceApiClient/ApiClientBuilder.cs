@@ -9,50 +9,86 @@ namespace InterfaceApiClient
 {
     public class ApiClientBuilder : IApiClientBuilder
     {
-        private readonly IServiceCollection _serviceDescriptors;
+        private readonly IServiceCollection _services;
         private List<Type> _interfaceTypes;
         private ApiClientConfiguration _configuration;
 
+        /// <summary>
+        /// Creates new Api client builder
+        /// </summary>
+        /// <param name="serviceDescriptors">Service collection</param>
         public ApiClientBuilder(IServiceCollection serviceDescriptors)
         {
-            _serviceDescriptors = serviceDescriptors;
+            _services = serviceDescriptors;
             _interfaceTypes = new List<Type>();
             _configuration = new ApiClientConfiguration();
         }
 
-        public IServiceCollection RegisterAllDependencies()
+        /// <inheritdoc/>
+        public IServiceCollection Apply()
         {
-            if(_serviceDescriptors.Any(d => d.ServiceType == typeof(IApiClientProxy)))
-            {
-                throw new InvalidOperationException($"ApiClientProxy was already registered.");
-            }
-            var typeList = _interfaceTypes.Distinct().ToArray();
-            var proxyBuilder = new ApiClientProxyBuilder(_configuration);
-            foreach(var type in typeList)
-            {
-                proxyBuilder.AddInterface(type);
-            }
-            proxyBuilder.Build();
+            Type[] typeList = GetTypesToRegister();
+            ApiClientProxyBuilder proxyBuilder = BuildProxies(typeList);
+            VerifyConfiguration(proxyBuilder);
+            RegisterStaticServices();
+            RegisterImplementations(typeList, proxyBuilder);
+            return _services;
+        }
 
-            _serviceDescriptors.AddTransient<IApiClientProxy, ApiClientProxy>();
-            _serviceDescriptors.AddSingleton(_configuration);
+        private Type[] GetTypesToRegister()
+        {
+            var registeredServices = _services.Select(service => service.ServiceType).Distinct().ToHashSet();
+            var typeList = _interfaceTypes.Distinct().Where(t => !registeredServices.Contains(t)).ToArray();
+            return typeList;
+        }
 
+        private void RegisterImplementations(Type[] typeList, ApiClientProxyBuilder proxyBuilder)
+        {
             foreach (var type in typeList)
             {
                 var factory = proxyBuilder.ImplementationFor(type);
                 var metadata = new ProxyMetadata(type);
-                _serviceDescriptors.AddTransient(type, provider => factory(provider.GetRequiredService<IApiClientProxy>(), metadata));
+                _services.AddTransient(type, provider => factory(provider.GetRequiredService<IApiClientProxy>(), metadata));
             }
-
-            return _serviceDescriptors;
         }
 
+        private void RegisterStaticServices()
+        {
+            if (!_services.Any(d => d.ServiceType == typeof(IApiClientProxy)))
+            {
+                _services.AddTransient<IApiClientProxy, ApiClientProxy>();
+            }
+            _services.AddSingleton(_configuration);
+        }
+
+        private ApiClientProxyBuilder BuildProxies(Type[] typeList)
+        {
+            var proxyBuilder = new ApiClientProxyBuilder(_configuration);
+            foreach (var type in typeList)
+            {
+                proxyBuilder.AddInterface(type);
+            }
+            proxyBuilder.Build();
+            return proxyBuilder;
+        }
+
+        private void VerifyConfiguration(ApiClientProxyBuilder proxyBuilder)
+        {
+            var missingGroups = proxyBuilder.AllGroups
+                            .Where(group => !_configuration.Endpoints.ContainsKey(group))
+                            .ToArray();
+            if (missingGroups.Any())
+                throw new KeyNotFoundException($"Endpoint groups not configured: {string.Join(", ", missingGroups)}");
+        }
+
+        /// <inheritdoc/>
         public IApiClientBuilder WithConfiguration(Action<ApiClientConfiguration>? configure)
         {
             configure?.Invoke(_configuration);
             return this;
         }
 
+        /// <inheritdoc/>
         public IApiClientBuilder WithTransientAssemblyTypes(Assembly assembly, Action<ApiClientConfiguration>? configure = null)
         {
             var typesToRegister = assembly.GetExportedTypes()
@@ -62,6 +98,7 @@ namespace InterfaceApiClient
             return this;
         }
 
+        /// <inheritdoc/>
         public IApiClientBuilder WithTransientClient<TInterface>(Action<ApiClientConfiguration>? configure = null)
         {
             _interfaceTypes.Add(typeof(TInterface));

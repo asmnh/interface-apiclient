@@ -21,7 +21,7 @@ namespace InterfaceApi.Sample.Client
                         .AddHttpClient()
                         .UseInterfaceApiClient()
                             .WithTransientClient<IHelloWorld>(config => { config.UseEndpoint<IHelloWorld>("https://localhost:44356/"); })
-                            .RegisterAllDependencies()
+                            .Apply()
                 );
     }
 
