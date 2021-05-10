@@ -2,7 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -19,6 +22,7 @@ namespace InterfaceApiClient
         public Func<object?[], IDictionary<string, string>> BuildQuery { get; }
         public Func<object?[], object?> BuildBody { get; }
         public Func<object?[], IDictionary<string, string>> BuildHeaders { get; }
+        public Func<HttpStatusCode, string?, Exception?> BuildResponseException { get; }
         public Type ReturnType { get; }
 
         public bool HasReturnValue { get { return ReturnType != typeof(void); } }
@@ -36,6 +40,7 @@ namespace InterfaceApiClient
                 BuildBody = x => null;
                 BuildHeaders = x => new Dictionary<string, string>();
                 HttpMethod = "";
+                BuildResponseException = (_, _) => null;
                 IsApiMethod = false;
                 return;
             }
@@ -48,6 +53,37 @@ namespace InterfaceApiClient
             BuildQuery = MakeQueryBuilder(parameters);
             BuildBody = MakeBodyBuilder(parameters);
             BuildHeaders = MakeHeaderBuilder(parameters);
+            BuildResponseException = MakeResponseExceptionBuilder(method);
+        }
+
+        private static Func<HttpStatusCode, string?, Exception?> MakeResponseExceptionBuilder(MethodInfo method)
+        {
+            var attributes = method.GetCustomAttributes<MapErrorAttribute>();
+            Dictionary<HttpStatusCode, Func<string?, Exception?>> callbacks = new();
+            foreach(var attr in attributes)
+            {
+                var type = attr.ExceptionType;
+                var exceptionFactory = GetTryDeserialize(type);
+                callbacks[attr.StatusCode] = exceptionFactory;
+            }
+            return (code, data) => callbacks.ContainsKey(code) ? callbacks[code](data) ?? new Exception() : null;
+        }
+
+        private static Func<string?, Exception?> GetTryDeserialize(Type type)
+        {
+            return data =>
+            {
+                if (data is null) return Activator.CreateInstance(type) as Exception;
+                try
+                {
+                    Exception? e = JsonSerializer.Deserialize(data, type) as Exception;
+                    return e;
+                }
+                catch(System.Text.Json.JsonException)
+                {
+                    return Activator.CreateInstance(type) as Exception;
+                }
+            };
         }
 
         private Type UnpackAsyncReturnType(Type returnType)

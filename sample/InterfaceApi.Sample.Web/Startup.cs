@@ -41,6 +41,12 @@ namespace InterfaceApi.Sample.Web
                 endpoints.MapPost("/hello2/{name:alpha}", async context =>
                 {
                     string name = context.Request.RouteValues["name"]!.ToString()!;
+                    if(name.ToLower() == "waldo")
+                    {
+                        context.Response.StatusCode = 404;
+                        await context.Response.WriteAsync("{}");
+                        return;
+                    }
                     var lang = context.Request.Query["lang"].ToString();
                     var body = await JsonSerializer.DeserializeAsync<Hello2Body>(context.Request.Body);
                     await context.Response.WriteAsync(JsonSerializer.Serialize($"Hello {name} from {lang} - you are {body?.Suffix}"));
@@ -48,6 +54,12 @@ namespace InterfaceApi.Sample.Web
                 endpoints.MapPost("/hello/{toWhom:alpha}", async context =>
                 {
                     var toWhom = context.Request.RouteValues["toWhom"];
+                    if (toWhom?.ToString()?.ToLower() == "waldo")
+                    {
+                        context.Response.StatusCode = 404;
+                        await context.Response.WriteAsync("{}");
+                        return;
+                    }
                     context.Request.Query.TryGetValue("lang", out StringValues lang);
                     await context.Response.WriteAsync(JsonSerializer.Serialize($"Hello, {toWhom} from {lang}"));
                 });

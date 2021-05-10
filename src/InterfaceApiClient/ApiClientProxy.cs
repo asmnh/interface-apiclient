@@ -74,12 +74,15 @@ namespace InterfaceApiClient
 
             var response = await httpClient.SendAsync(request);
 
-            // TODO: check if we need to throw an exception
+            string responseString = await response.Content.ReadAsStringAsync();
+
+            Exception? exception = methodMetadata.BuildResponseException(response.StatusCode, responseString);
+            if (exception != null)
+                throw exception;
 
             if (!methodMetadata.HasReturnValue)
                 return null;
 
-            string responseString = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize(responseString, methodMetadata.ReturnType);
         }
 
