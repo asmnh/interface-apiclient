@@ -79,6 +79,7 @@ namespace InterfaceApiClient
                             .ToArray();
             if (missingGroups.Any())
                 throw new KeyNotFoundException($"Endpoint groups not configured: {string.Join(", ", missingGroups)}");
+            _configuration.Verify();
         }
 
         /// <inheritdoc/>

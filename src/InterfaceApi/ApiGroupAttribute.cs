@@ -8,11 +8,9 @@ namespace InterfaceApiClient.DataTypes
     /// <remarks>
     /// API group is used to group multiple API endpoints sharing single endpoint destination.
     /// Group endpoint URL is configured during API client or API configuration injection.
-    /// If not present, interface assembly name will be used as API group.
-    /// 
-    /// Setting group on an interface will apply to all methods present.
+    /// If not present, interface name will be used as API group.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Method|AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
     public class ApiGroupAttribute : Attribute
     {
         /// <summary>

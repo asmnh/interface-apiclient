@@ -41,6 +41,7 @@ namespace InterfaceApiClient
         /// </remarks>
         /// <exception cref="InvalidMetadataException">One or more of registered proxies has invalid metadata that makes it impossible to build API client.</exception>
         /// <exception cref="System.Collections.Generic.KeyNotFoundException">One or more required API groups were not configured</exception>
+        /// <exception cref="UriFormatException">One or more groups have invalid URI</exception>
         // TODO: include exceptions that ApiClientConfiguration can throw.
         IServiceCollection Apply();
     }
