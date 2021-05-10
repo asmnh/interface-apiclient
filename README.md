@@ -17,3 +17,4 @@ This is early alpha proof-of-concept attempt at making library that will ease tr
 - Conditional response content to exception conversion (for services that always return HTTP 200).
 - Better attributes validation.
 - To be considered: server-side request handler generator (should use OpenAPI attributes for that probably).
+- Profile performance of building requests, performance comparision against handbuilt requests.
